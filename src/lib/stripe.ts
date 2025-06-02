@@ -1,0 +1,1 @@
+import Stripe from 'stripe'; import { loadStripe } from '@stripe/stripe-js'; export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_for_build', { apiVersion: '2024-06-20' }); export const getStripe = () => { return loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_dummy_key_for_build'); };
