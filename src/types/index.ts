@@ -4,6 +4,7 @@ export interface User {
   email: string;
   teamName: string;
   representativeName: string;
+  password?: string; // Base64エンコード済みパスワード
   isPaid: boolean;
   createdAt: string;
 }

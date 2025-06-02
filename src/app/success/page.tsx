@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle, User, Mail, Users, Calendar, ArrowRight } from 'lucide-react';
+import { CheckCircle, User, Mail, Users, Calendar, ArrowRight, Lock, Eye, EyeOff } from 'lucide-react';
 import { userStorage, authStorage } from '@/lib/storage';
 import { User as UserType } from '@/types';
 
@@ -12,9 +12,14 @@ function SuccessContent() {
   const [formData, setFormData] = useState({
     teamName: '',
     representativeName: '',
-    email: ''
+    email: '',
+    password: '',
+    confirmPassword: ''
   });
   const [isFormValid, setIsFormValid] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,11 +29,24 @@ function SuccessContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    // パスワード検証
+    let passwordValidationError = '';
+    
+    if (formData.password && formData.password.length < 8) {
+      passwordValidationError = 'パスワードは8文字以上で入力してください';
+    } else if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      passwordValidationError = 'パスワードが一致しません';
+    }
+    
+    setPasswordError(passwordValidationError);
+
     // フォームバリデーション
     const isValid = formData.teamName.trim() !== '' && 
                    formData.representativeName.trim() !== '' && 
                    formData.email.trim() !== '' &&
-                   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+                   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
+                   formData.password.length >= 8 &&
+                   formData.password === formData.confirmPassword;
     setIsFormValid(isValid);
   }, [formData]);
 
@@ -56,6 +74,7 @@ function SuccessContent() {
         email: formData.email,
         teamName: formData.teamName,
         representativeName: formData.representativeName,
+        password: btoa(formData.password), // Base64エンコードで簡易暗号化
         isPaid: true, // 決済完了済み
         createdAt: new Date().toISOString()
       };
@@ -172,6 +191,65 @@ function SuccessContent() {
                   required
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                パスワード
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400 transition-colors"
+                  placeholder="8文字以上のパスワード"
+                  required
+                  minLength={8}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {formData.password && formData.password.length < 8 && (
+                <p className="text-red-400 text-xs mt-1">パスワードは8文字以上で入力してください</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                パスワード確認
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400 transition-colors"
+                  placeholder="パスワードを再入力"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="text-red-400 text-xs mt-1">{passwordError}</p>
+              )}
             </div>
 
             <button
