@@ -7,14 +7,32 @@ import { Eye, EyeOff, Users, Mail, Calendar, Shield, Database, Trash2 } from 'lu
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // ローカルストレージからユーザー情報を取得
-    const user = userStorage.get();
-    setCurrentUser(user);
-    setIsLoading(false);
+    const fetchUsers = async () => {
+      try {
+        // サーバーサイドから全ユーザー情報を取得
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          setAllUsers(data.users || []);
+        } else {
+          console.error('ユーザー情報の取得に失敗しました');
+        }
+      } catch (error) {
+        console.error('API呼び出しエラー:', error);
+      }
+      
+      // ローカルストレージからも取得（バックアップ）
+      const localUser = userStorage.get();
+      setCurrentUser(localUser);
+      setIsLoading(false);
+    };
+
+    fetchUsers();
   }, []);
 
   const clearUserData = () => {
@@ -61,7 +79,103 @@ export default function AdminPage() {
           <p className="text-gray-300">登録ユーザー情報の確認・管理</p>
         </div>
 
-        {currentUser ? (
+        {/* 統計情報 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="glass-card p-6 rounded-lg text-center">
+            <h3 className="text-lg font-bold text-white mb-2">総ユーザー数</h3>
+            <p className="text-3xl font-bold text-purple-400">{allUsers.length}</p>
+          </div>
+          <div className="glass-card p-6 rounded-lg text-center">
+            <h3 className="text-lg font-bold text-white mb-2">有料ユーザー</h3>
+            <p className="text-3xl font-bold text-green-400">
+              {allUsers.filter(user => user.isPaid).length}
+            </p>
+          </div>
+          <div className="glass-card p-6 rounded-lg text-center">
+            <h3 className="text-lg font-bold text-white mb-2">今日の新規登録</h3>
+            <p className="text-3xl font-bold text-blue-400">
+              {allUsers.filter(user => 
+                new Date(user.createdAt).toDateString() === new Date().toDateString()
+              ).length}
+            </p>
+          </div>
+        </div>
+
+        {allUsers.length > 0 ? (
+          <div className="space-y-6">
+            {/* 全ユーザー一覧 */}
+            <div className="glass-card p-6 rounded-lg">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center">
+                  <Users className="w-6 h-6 mr-2" />
+                  全登録ユーザー ({allUsers.length}名)
+                </h2>
+              </div>
+
+              <div className="grid gap-4">
+                {allUsers.map((user, index) => (
+                  <div key={user.id} className="bg-white/5 border border-white/20 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          #{index + 1} - チーム名
+                        </label>
+                        <p className="text-white">{user.teamName}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          代表者名
+                        </label>
+                        <p className="text-white">{user.representativeName}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          メールアドレス
+                        </label>
+                        <p className="text-white">{user.email}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          登録日時
+                        </label>
+                        <p className="text-white text-sm">
+                          {new Date(user.createdAt).toLocaleString('ja-JP')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        user.isPaid 
+                          ? 'bg-green-500/20 text-green-300' 
+                          : 'bg-red-500/20 text-red-300'
+                      }`}>
+                        {user.isPaid ? '✓ 決済完了' : '✗ 未決済'}
+                      </span>
+                      <p className="text-xs text-gray-400">
+                        ID: {user.id}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ローカルユーザー情報（デバッグ用） */}
+            {currentUser && (
+              <div className="glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                  <Database className="w-5 h-5 mr-2" />
+                  ローカルユーザー情報（このブラウザ）
+                </h3>
+                <div className="bg-black/20 rounded-lg p-4 overflow-x-auto">
+                  <pre className="text-green-300 text-sm">
+                    <code>{JSON.stringify(currentUser, null, 2)}</code>
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : currentUser ? (
           <div className="space-y-6">
             {/* ユーザー情報カード */}
             <div className="glass-card p-6 rounded-lg">

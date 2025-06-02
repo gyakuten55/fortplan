@@ -79,6 +79,31 @@ function SuccessContent() {
         createdAt: new Date().toISOString()
       };
 
+      // サーバーサイドにユーザー情報を保存
+      try {
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...newUser,
+            sessionId: sessionId // Stripeセッション情報も保存
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('サーバー保存エラー:', errorData);
+          // エラーでも処理続行（ローカル保存は実行）
+        } else {
+          console.log('サーバーにユーザー情報を保存しました');
+        }
+      } catch (serverError) {
+        console.error('サーバー保存でエラーが発生:', serverError);
+        // エラーでも処理続行
+      }
+
       // ローカルストレージに保存
       userStorage.set(newUser);
 
