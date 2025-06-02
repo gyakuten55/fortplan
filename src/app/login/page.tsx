@@ -60,6 +60,7 @@ export default function LoginPage() {
           email: 'demo@fortplan.com',
           teamName: 'Demo Team',
           representativeName: 'デモユーザー',
+          password: btoa('password123'), // パスワードをBase64エンコード
           isPaid: true,
           createdAt: new Date().toISOString()
         };
@@ -79,8 +80,24 @@ export default function LoginPage() {
         // 既存ユーザーのチェック
         const savedUser = userStorage.get();
         if (savedUser && savedUser.email === formData.email) {
-          // 簡易的なパスワードチェック（実際の実装では暗号化されたパスワードと比較）
-          if (formData.password.length >= 6) {
+          // パスワードチェック
+          let isPasswordValid = false;
+          
+          if (savedUser.password) {
+            // Base64エンコードされたパスワードをデコードして比較
+            try {
+              const decodedPassword = atob(savedUser.password);
+              isPasswordValid = decodedPassword === formData.password;
+            } catch (error) {
+              console.error('Password decode error:', error);
+              isPasswordValid = false;
+            }
+          } else {
+            // 旧ユーザー（パスワードなし）の場合、パスワード長で簡易チェック
+            isPasswordValid = formData.password.length >= 6;
+          }
+          
+          if (isPasswordValid) {
             // ログイン成功
             const authToken = generateAuthToken();
             authStorage.set(authToken);
