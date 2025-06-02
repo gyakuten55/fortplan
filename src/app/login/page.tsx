@@ -49,27 +49,21 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 実際の認証処理（現在はダミー実装）
-      // 実際の実装では、サーバーサイドでの認証を行う
-      
-      // ダミーの認証チェック（実際の実装では削除）
-      if (formData.email === 'demo@fortplan.com' && formData.password === 'password123') {
-        // デモユーザーを作成・保存
-        const demoUser: User = {
-          id: 'demo-user-001',
-          email: 'demo@fortplan.com',
-          teamName: 'Demo Team',
-          representativeName: 'デモユーザー',
-          password: btoa('password123'), // パスワードをBase64エンコード
-          isPaid: true,
-          createdAt: new Date().toISOString()
-        };
+      // サーバーサイド認証API呼び出し
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
         
-        userStorage.set(demoUser);
-        
-        // ログイン成功
-        const authToken = generateAuthToken();
-        authStorage.set(authToken);
+        // ユーザー情報をローカルストレージに保存
+        userStorage.set(data.user);
+        authStorage.set(data.token);
         
         setMessage('ログインに成功しました。ダッシュボードに移動します...');
         
@@ -77,43 +71,8 @@ export default function LoginPage() {
           router.push('/dashboard');
         }, 1500);
       } else {
-        // 既存ユーザーのチェック
-        const savedUser = userStorage.get();
-        if (savedUser && savedUser.email === formData.email) {
-          // パスワードチェック
-          let isPasswordValid = false;
-          
-          if (savedUser.password) {
-            // Base64エンコードされたパスワードをデコードして比較
-            try {
-              const decodedPassword = atob(savedUser.password);
-              isPasswordValid = decodedPassword === formData.password;
-            } catch (error) {
-              console.error('Password decode error:', error);
-              isPasswordValid = false;
-            }
-          } else {
-            // 旧ユーザー（パスワードなし）の場合、パスワード長で簡易チェック
-            isPasswordValid = formData.password.length >= 6;
-          }
-          
-          if (isPasswordValid) {
-            // ログイン成功
-            const authToken = generateAuthToken();
-            authStorage.set(authToken);
-            
-            setMessage('ログインに成功しました。ダッシュボードに移動します...');
-            
-            setTimeout(() => {
-              router.push('/dashboard');
-            }, 1500);
-          } else {
-            setError('パスワードが正しくありません');
-          }
-        } else {
-          // ユーザーが見つからない場合、新規登録ページへ誘導
-          setError('アカウントが見つかりません。新規登録を行ってください。');
-        }
+        const errorData = await response.json();
+        setError(errorData.error || 'ログインに失敗しました');
       }
     } catch (error) {
       setError('ログインに失敗しました。しばらく経ってから再度お試しください。');
@@ -244,13 +203,27 @@ export default function LoginPage() {
 
 
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-3">
             <p className="text-gray-300">
               アカウントをお持ちでない方は{' '}
               <Link href="/purchase" className="text-purple-400 hover:text-purple-300 transition-colors">
                 こちらから購入
               </Link>
             </p>
+            
+            <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-3">
+              <p className="text-blue-200 text-sm">
+                <strong>💡 ヒント:</strong> 決済完了後に登録したメールアドレスとパスワードでログインできます
+              </p>
+            </div>
+            
+            <div className="bg-amber-500/20 border border-amber-500/50 rounded-lg p-3">
+              <p className="text-amber-200 text-sm">
+                <strong>🎮 デモアカウント:</strong><br />
+                メール: demo@fortplan.com<br />
+                パスワード: password123
+              </p>
+            </div>
           </div>
 
 
