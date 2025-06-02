@@ -10,8 +10,46 @@ export default function AdminPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminUser, setAdminUser] = useState<any>(null);
 
   useEffect(() => {
+    const checkAdminAuth = async () => {
+      // 管理者認証チェック
+      const adminToken = localStorage.getItem('fortplan-admin-token');
+      const adminUserData = localStorage.getItem('fortplan-admin-user');
+      
+      if (!adminToken || !adminUserData) {
+        // 未認証の場合、ログインページにリダイレクト
+        window.location.href = '/admin/login';
+        return;
+      }
+
+      try {
+        // トークンの有効性をサーバーで検証
+        const response = await fetch('/api/admin/auth', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        if (response.ok) {
+          setIsAuthenticated(true);
+          setAdminUser(JSON.parse(adminUserData));
+          await fetchUsers();
+        } else {
+          // トークンが無効な場合
+          localStorage.removeItem('fortplan-admin-token');
+          localStorage.removeItem('fortplan-admin-user');
+          window.location.href = '/admin/login';
+        }
+      } catch (error) {
+        console.error('認証確認エラー:', error);
+        window.location.href = '/admin/login';
+      }
+    };
+
     const fetchUsers = async () => {
       try {
         // サーバーサイドから全ユーザー情報を取得
@@ -32,7 +70,7 @@ export default function AdminPage() {
       setIsLoading(false);
     };
 
-    fetchUsers();
+    checkAdminAuth();
   }, []);
 
   const clearUserData = () => {
@@ -45,24 +83,32 @@ export default function AdminPage() {
   };
 
   const exportUserData = () => {
-    if (currentUser) {
-      const dataStr = JSON.stringify(currentUser, null, 2);
+    if (allUsers.length > 0) {
+      const dataStr = JSON.stringify(allUsers, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `user-data-${currentUser.email}-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `all-users-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
     }
   };
 
-  if (isLoading) {
+  const handleLogout = () => {
+    if (confirm('ログアウトしますか？')) {
+      localStorage.removeItem('fortplan-admin-token');
+      localStorage.removeItem('fortplan-admin-user');
+      window.location.href = '/admin/login';
+    }
+  };
+
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
-          <p className="text-gray-300">読み込み中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-400 mx-auto mb-4"></div>
+          <p className="text-gray-300">認証確認中...</p>
         </div>
       </div>
     );
@@ -71,12 +117,33 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen gradient-bg p-4">
       <div className="max-w-4xl mx-auto">
+        {/* 管理者ヘッダー */}
+        <div className="glass-card p-4 rounded-lg mb-8">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <Shield className="w-6 h-6 text-red-400 mr-2" />
+              <div>
+                <h2 className="text-lg font-bold text-white">運営者ログイン中</h2>
+                <p className="text-sm text-gray-300">
+                  {adminUser?.username} ({adminUser?.loginTime && new Date(adminUser.loginTime).toLocaleString('ja-JP')})
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+            >
+              ログアウト
+            </button>
+          </div>
+        </div>
+
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center justify-center">
             <Shield className="w-8 h-8 mr-3" />
-            管理者ダッシュボード
+            FortPlan 管理者ダッシュボード
           </h1>
-          <p className="text-gray-300">登録ユーザー情報の確認・管理</p>
+          <p className="text-gray-300">購入ユーザー情報の確認・管理</p>
         </div>
 
         {/* 統計情報 */}
